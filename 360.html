@@ -1,80 +1,140 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 全景工具箱 (截圖強制修正版)</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
-    <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
-    <style>
-        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
-        #panorama { width: 100%; height: 100vh; }
-        .menu {
-            position: absolute; top: 20px; right: 20px; z-index: 100;
-            display: flex; flex-direction: column; gap: 10px;
-        }
-        button {
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            color: white; padding: 12px 20px; border-radius: 10px;
-            cursor: pointer; font-size: 14px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            transition: 0.2s; min-width: 170px;
-        }
-        button:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.02); }
-        #fileInput { display: none; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 全景工具箱（穩定截圖版）</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
+<script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+
+<style>
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #1a1a1a;
+    font-family: sans-serif;
+}
+
+#panorama {
+    width: 100%;
+    height: 100vh;
+}
+
+.menu {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+button {
+    background: rgba(255,255,255,0.2);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255,255,255,0.4);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    min-width: 170px;
+}
+
+button:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+#fileInput { display: none; }
+</style>
 </head>
+
 <body>
-    <div id="panorama"></div>
-    <div class="menu">
-        <button id="snapBtn">📷 點擊此處截圖</button>
-        <button onclick="viewer.setPitch(0); viewer.setYaw(0);">🏠 重置視角</button>
-        <button onclick="document.getElementById('fileInput').click()">📤 更換圖片</button>
-        <input type="file" id="fileInput" accept="image/*">
-    </div>
 
-    <script>
-        let viewer = null;
+<div id="panorama"></div>
 
-        function loadPano(img) {
-            if (viewer) viewer.destroy();
-            viewer = pannellum.viewer('panorama', {
-                "type": "equirectangular",
-                "panorama": img,
-                "autoLoad": true,
-                "showControls": false,
-                "crossOrigin": "anonymous"
-            });
+<div class="menu">
+    <button id="snapBtn">📷 截圖（穩定版）</button>
+    <button onclick="resetView()">🏠 重置視角</button>
+    <button onclick="document.getElementById('fileInput').click()">📤 更換圖片</button>
+    <input type="file" id="fileInput" accept="image/*">
+</div>
+
+<script>
+let viewer = null;
+
+// 載入全景
+function loadPano(img) {
+    if (viewer) viewer.destroy();
+
+    viewer = pannellum.viewer('panorama', {
+        type: "equirectangular",
+        panorama: img,
+        autoLoad: true,
+        showControls: false,
+        crossOrigin: "anonymous",
+
+        renderer: {
+            preserveDrawingBuffer: true
+        }
+    });
+}
+
+// 預設圖片
+loadPano("https://pannellum.org/images/alma.jpg");
+
+// 上傳圖片
+document.getElementById('fileInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = e => loadPano(e.target.result);
+    reader.readAsDataURL(file);
+});
+
+// 重置視角
+function resetView() {
+    viewer.setPitch(0);
+    viewer.setYaw(0);
+}
+
+// 截圖
+document.getElementById('snapBtn').addEventListener('click', function() {
+
+    const canvas = document.querySelector('#panorama canvas');
+    if (!canvas) {
+        alert("找不到畫布");
+        return;
+    }
+
+    requestAnimationFrame(() => {
+
+        try {
+            const dataURL = canvas.toDataURL('image/png');
+
+            if (!dataURL || dataURL === "data:,") {
+                alert("截圖失敗（空畫面），請稍微移動畫面再試");
+                return;
+            }
+
+            const link = document.createElement('a');
+            link.href = dataURL;
+            link.download = "pano-" + Date.now() + ".png";
+            link.click();
+
+        } catch (err) {
+            alert("截圖失敗（可能是跨域/CORS）");
+            console.error(err);
         }
 
-        loadPano("https://pannellum.org/images/alma.jpg");
+    });
+});
+</script>
 
-        document.getElementById('fileInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = e => loadPano(e.target.result);
-            reader.readAsDataURL(file);
-        });
-
-        // 截圖邏輯修正：直接從渲染循環中抓取
-        document.getElementById('snapBtn').addEventListener('click', function() {
-            const canvas = document.querySelector('#panorama canvas');
-            if (!canvas) return;
-
-            // 強制瀏覽器在下一幀渲染前不要清空內容
-            const dataURL = canvas.toDataURL('image/png');
-            
-            if (dataURL === "data:,") { // 如果抓到空數據
-                alert("截圖失敗，請嘗試晃動一下畫面再按一次！");
-            } else {
-                const link = document.createElement('a');
-                link.href = dataURL;
-                link.download = `360-shot-${Date.now()}.png`;
-                link.click();
-            }
-        });
-    </script>
 </body>
 </html>
