@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 全景工具箱 (截圖修正版)</title>
+    <title>AI 全景工具箱 (截圖終極修正版)</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
     <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
     <style>
@@ -34,51 +34,47 @@
         <input type="file" id="fileInput" accept="image/*">
     </div>
     <script>
-        let viewer = pannellum.viewer('panorama', {
-            "type": "equirectangular",
-            "panorama": "https://pannellum.org/images/alma.jpg",
-            "autoLoad": true,
-            "showControls": false,
-            // 修正 1: 預設載入外部圖片時使用匿名模式 (跨域安全)
-            "crossOrigin": "anonymous" 
-        });
+        let viewer = null;
+
+        function initPannellum(imageSrc) {
+            if (viewer) { viewer.destroy(); }
+            viewer = pannellum.viewer('panorama', {
+                "type": "equirectangular",
+                "panorama": imageSrc,
+                "autoLoad": true,
+                "showControls": false,
+                "crossOrigin": "anonymous",
+                // 關鍵修正：保留繪圖緩衝區，防止截圖變黑
+                "rendererOptions": { "preserveDrawingBuffer": true }
+            });
+        }
+
+        // 預設圖片
+        initPannellum("https://pannellum.org/images/alma.jpg");
 
         document.getElementById('fileInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
             const reader = new FileReader();
             reader.onload = function(event) {
-                // 如果已經有舊的檢視器，先銷毀它，這是 Pannellum 重新載入本機圖片的最佳實踐
-                if (viewer) { viewer.destroy(); }
-                
-                // 修正 2: 重新載入本機圖片時，也要確保 cors 匿名模式 (即使是本機 dataURL)
-                viewer = pannellum.viewer('panorama', {
-                    "type": "equirectangular",
-                    "panorama": event.target.result, // 使用 Base64 dataURL
-                    "autoLoad": true,
-                    "showControls": false,
-                    "crossOrigin": "anonymous" 
-                });
+                initPannellum(event.target.result);
             };
-            // 修正 3: 使用 readAsDataURL 是將本機圖片傳給 Canvas 的標準安全做法
             reader.readAsDataURL(file);
         });
 
         function takeScreenshot() {
-            // 修正 4: 確保 Pannellum 的 Canvas 已經渲染完成，並且嘗試讀取數據
             const canvas = document.querySelector('#panorama canvas');
             if (canvas) {
-                try {
-                    // 如果這行代碼報錯，代表安全限制沒通過
-                    const imgData = canvas.toDataURL('image/png');
-                    const link = document.createElement('a');
-                    link.download = '360-view-screenshot.png';
-                    link.href = imgData;
-                    link.click();
-                } catch (e) {
-                    alert("截圖失敗 (安全限制)。請嘗試「更換圖片」後再試。");
-                    console.error(e);
-                }
+                // 確保從 Canvas 獲取資料
+                const dataURL = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = '360-capture-' + Date.now() + '.png';
+                link.href = dataURL;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                alert("找不到畫布，請稍後再試");
             }
         }
     </script>
