@@ -19,10 +19,10 @@
         #ui {
             position: fixed; top: 20px; right: 20px; z-index: 10;
             display: flex; flex-direction: column; gap: 10px;
-            width: 240px; /* 稍微加寬以容納新文字 */
+            width: 250px; 
         }
 
-        /* 🏆 作者連結按鈕：更新文字與樣式 */
+        /* 🏆 更新：文字改為「作者連結：張阿旗 AI Lab」，網址改為 @AQiAILab */
         .author-btn {
             padding: 12px 15px;
             background: rgba(255, 0, 0, 0.25) !important;
@@ -69,7 +69,7 @@
 <div id="drop-zone">📥 鬆開滑鼠載入全景圖</div>
 
 <div id="ui">
-    <a class="author-btn" href="https://www.youtube.com/@張阿旗StudyKnowledge" target="_blank">
+    <a class="author-btn" href="https://www.youtube.com/@AQiAILab" target="_blank">
         📺 作者連結：<b>張阿旗 AI Lab</b>
     </a>
 
@@ -113,6 +113,7 @@
         }, undefined, (err) => alert("載入失敗"));
     }
 
+    // 初始圖
     loadTexture("https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg");
 
     const dropZone = document.getElementById('drop-zone');
