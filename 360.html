@@ -3,36 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Three.js 360 終極工具（含滾輪縮放）</title>
+    <title>Three.js 360 終極工具 - 張阿旗 Study Knowledge</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
+        body { margin: 0; overflow: hidden; background: #1a1a1a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        /* 拖放提示遮罩 */
+        #drop-zone {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none; align-items: center; justify-content: center;
+            color: #00ff96; font-size: 28px; border: 5px dashed #00ff96;
+            z-index: 100; pointer-events: none; font-weight: bold;
+        }
+
         #ui {
             position: fixed; top: 20px; right: 20px; z-index: 10;
             display: flex; flex-direction: column; gap: 10px;
         }
+
+        /* 🏆 左下角作者標籤 (僅在 UI 顯示) */
+        #author-tag {
+            position: fixed; bottom: 20px; left: 20px; z-index: 10;
+            color: rgba(255, 255, 255, 0.6);
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 15px; border-radius: 20px;
+            font-size: 14px; backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            pointer-events: none;
+        }
+        #author-tag b { color: #00ff96; }
+
         button {
             padding: 12px 20px;
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.15);
             backdrop-filter: blur(15px);
-            color: #fff; border: 1px solid rgba(255, 255, 255, 0.4);
+            color: #fff; border: 1px solid rgba(255, 255, 255, 0.3);
             border-radius: 10px; cursor: pointer;
             font-size: 14px; transition: 0.2s;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            text-align: left;
         }
-        button:hover { background: rgba(255, 255, 255, 0.35); transform: translateY(-2px); }
+        button:hover { background: rgba(255, 255, 255, 0.3); transform: translateX(-5px); }
         .file-label {
-            padding: 10px; color: #aaa; font-size: 12px; text-align: right;
+            padding: 5px 10px; color: #888; font-size: 11px; text-align: right;
         }
         #file { display: none; }
+        .btn-special { background: rgba(0, 255, 150, 0.15); border-color: rgba(0, 255, 150, 0.4); }
     </style>
 </head>
 <body>
 
+<div id="drop-zone">📥 鬆開滑鼠載入全景圖</div>
+
+<div id="author-tag">製作：<b>張阿旗 Study Knowledge</b></div>
+
 <div id="ui">
-    <button onclick="snap()">📷 執行截圖</button>
+    <button onclick="snap()">📷 一般截圖</button>
+    <button class="btn-special" onclick="snapFourGrid()">🖼️ 四宮格截圖 (2*2)</button>
     <button onclick="resetView()">🏠 重置視角</button>
-    <label class="file-label">滾輪可放大縮小：</label>
-    <button onclick="document.getElementById('file').click()">📤 上傳全景圖</button>
+    <label class="file-label">支援直接拖放圖片檔案</label>
+    <button onclick="document.getElementById('file').click()">📤 選擇全景圖</button>
     <input type="file" id="file" accept="image/*">
 </div>
 
@@ -40,26 +70,23 @@
 
 <script>
     let scene = new THREE.Scene();
-    // 預設 FOV 為 75
     let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     
     let renderer = new THREE.WebGLRenderer({ 
         antialias: true, 
-        preserveDrawingBuffer: true,
+        preserveDrawingBuffer: true, // 保持緩衝區以便截圖
         alpha: true 
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     document.body.appendChild(renderer.domElement);
 
     camera.position.set(0, 0, 0.1);
 
     let mesh;
-
     function loadTexture(url) {
         const loader = new THREE.TextureLoader();
         loader.setCrossOrigin('anonymous'); 
-
         loader.load(url, (texture) => {
             if (mesh) scene.remove(mesh);
             const geometry = new THREE.SphereGeometry(500, 60, 40);
@@ -67,22 +94,26 @@
             const material = new THREE.MeshBasicMaterial({ map: texture });
             mesh = new THREE.Mesh(geometry, material);
             scene.add(mesh);
-        });
+        }, undefined, (err) => alert("載入失敗"));
     }
 
     loadTexture("https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg");
 
-    document.getElementById("file").onchange = e => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const blobURL = URL.createObjectURL(file);
-        loadTexture(blobURL);
-    };
+    // --- 檔案處理 ---
+    const dropZone = document.getElementById('drop-zone');
+    function handleFile(file) {
+        if (file && file.type.startsWith('image/')) {
+            const blobURL = URL.createObjectURL(file);
+            loadTexture(blobURL);
+        }
+    }
+    document.getElementById("file").onchange = e => handleFile(e.target.files[0]);
+    window.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.display = 'flex'; });
+    window.addEventListener('dragleave', e => { if (e.relatedTarget === null) dropZone.style.display = 'none'; });
+    window.addEventListener('drop', e => { e.preventDefault(); dropZone.style.display = 'none'; handleFile(e.dataTransfer.files[0]); });
 
-    // --- 視角與縮放控制 ---
+    // --- 相機控制 ---
     let isDown = false, lon = 0, lat = 0;
-    
-    // 滑鼠移動
     document.addEventListener("mousedown", () => isDown = true);
     document.addEventListener("mouseup", () => isDown = false);
     document.addEventListener("mousemove", (e) => {
@@ -90,48 +121,28 @@
         lon += e.movementX * 0.15;
         lat -= e.movementY * 0.15;
     });
-
-    // ⭐ 新增：滑鼠滾輪縮放邏輯
     document.addEventListener("wheel", (e) => {
-        // e.deltaY > 0 為向下捲動（縮小），反之為放大
-        const zoomSpeed = 0.05;
-        camera.fov += e.deltaY * zoomSpeed;
-        
-        // 限制縮放範圍，避免畫面翻轉或過度扭曲 (FOV 最小 10, 最大 100)
+        camera.fov += e.deltaY * 0.05;
         camera.fov = Math.max(10, Math.min(100, camera.fov));
-        
-        // 關鍵：修改 FOV 後必須更新投影矩陣
         camera.updateProjectionMatrix();
     }, { passive: false });
 
-    // 支援觸控（保持原樣）
-    document.addEventListener("touchstart", () => isDown = true, {passive: true});
-    document.addEventListener("touchend", () => isDown = false);
-    document.addEventListener("touchmove", (e) => {
-        if (!isDown) return;
-        lon += 0.5; 
-        lat -= 0.5;
-    }, {passive: true});
+    function resetView() { lon = 0; lat = 0; camera.fov = 75; camera.updateProjectionMatrix(); }
 
-    // ⭐ 修改重置視角：同時重置縮放
-    function resetView() { 
-        lon = 0; 
-        lat = 0; 
-        camera.fov = 75; 
-        camera.updateProjectionMatrix();
-    }
-
-    function animate() {
-        requestAnimationFrame(animate);
+    function updateCamera() {
         lat = Math.max(-85, Math.min(85, lat));
         const phi = THREE.MathUtils.degToRad(90 - lat);
         const theta = THREE.MathUtils.degToRad(lon);
-        const target = new THREE.Vector3(
+        camera.lookAt(
             500 * Math.sin(phi) * Math.cos(theta),
             500 * Math.cos(phi),
             500 * Math.sin(phi) * Math.sin(theta)
         );
-        camera.lookAt(target);
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        updateCamera();
         renderer.render(scene, camera);
     }
     animate();
@@ -142,45 +153,70 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    // 截圖功能（保持原樣）
+    // --- 純淨的四宮格截圖 (無浮水印) ---
+    function snapFourGrid() {
+        const sSize = 1024; // 單張圖大小
+        const finalCanvas = document.createElement("canvas");
+        finalCanvas.width = sSize * 2;
+        finalCanvas.height = sSize * 2;
+        const ctx = finalCanvas.getContext("2d");
+
+        const oldLon = lon, oldLat = lat;
+        
+        // 🏆 隱藏介面標籤，確保截圖純淨
+        const authorTag = document.getElementById('author-tag');
+        const uiPanel = document.getElementById('ui');
+        if (authorTag) authorTag.style.display = 'none';
+        if (uiPanel) uiPanel.style.display = 'none';
+
+        renderer.setSize(sSize, sSize);
+        camera.aspect = 1;
+        camera.updateProjectionMatrix();
+
+        const angles = [
+            { l: oldLon,       t: "Front", x: 0, y: 0 },
+            { l: oldLon + 180, t: "Back",  x: 1, y: 0 },
+            { l: oldLon + 270, t: "Left",  x: 0, y: 1 },
+            { l: oldLon + 90,  t: "Right", x: 1, y: 1 }
+        ];
+
+        angles.forEach(pos => {
+            lon = pos.l; lat = 0; // 強制水平視角
+            updateCamera();
+            renderer.render(scene, camera);
+            // 從 WebGL 抓圖到 Canvas
+            ctx.drawImage(renderer.domElement, pos.x * sSize, pos.y * sSize, sSize, sSize);
+            
+            // 視角標籤 (選用，若需要完全純淨可把這幾行註解掉)
+            ctx.fillStyle = "rgba(255,255,255,0.8)";
+            ctx.font = "bold 40px Arial";
+            ctx.fillText(pos.t, pos.x * sSize + 30, pos.y * sSize + 70);
+        });
+
+        // 下載純淨圖片
+        const link = document.createElement("a");
+        link.href = finalCanvas.toDataURL("image/png");
+        link.download = `360-Grid-${Date.now()}.png`;
+        link.click();
+
+        // 還原視角與介面
+        lon = oldLon; lat = oldLat;
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        
+        // 🏆 恢復介面顯示
+        if (authorTag) authorTag.style.display = 'block';
+        if (uiPanel) uiPanel.style.display = 'flex';
+    }
+
+    // 純淨的一般截圖
     function snap() {
         renderer.render(scene, camera);
-        const width = 1920; 
-        const height = 1080;
-        const rt = new THREE.WebGLRenderTarget(width, height);
-        renderer.setRenderTarget(rt);
-        renderer.render(scene, camera);
-
-        const pixels = new Uint8Array(width * height * 4);
-        renderer.readRenderTargetPixels(rt, 0, 0, width, height, pixels);
-
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-
-        const tempCanvas = document.createElement("canvas");
-        tempCanvas.width = width;
-        tempCanvas.height = height;
-        const tempCtx = tempCanvas.getContext("2d");
-        const imageData = tempCtx.createImageData(width, height);
-        imageData.data.set(pixels);
-        tempCtx.putImageData(imageData, 0, 0);
-
-        ctx.translate(0, height);
-        ctx.scale(1, -1);
-        ctx.drawImage(tempCanvas, 0, 0);
-
-        renderer.setRenderTarget(null);
-
-        try {
-            const link = document.createElement("a");
-            link.href = canvas.toDataURL("image/png");
-            link.download = `360-shot-${Date.now()}.png`;
-            link.click();
-        } catch (e) {
-            alert("截圖失敗");
-        }
+        const link = document.createElement("a");
+        link.href = renderer.domElement.toDataURL("image/png");
+        link.download = `360-Shot-${Date.now()}.png`;
+        link.click();
     }
 </script>
 
