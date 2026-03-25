@@ -1,229 +1,211 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Three.js 360 終極工具 - 張阿旗 AI Lab</title>
-    <style>
-        body { margin: 0; overflow: hidden; background: #1a1a1a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        
-        /* 拖放提示遮罩 */
-        #drop-zone {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            display: none; align-items: center; justify-content: center;
-            color: #00ff96; font-size: 28px; border: 5px dashed #00ff96;
-            z-index: 100; pointer-events: none; font-weight: bold;
-        }
-
-        #ui {
-            position: fixed; top: 20px; right: 20px; z-index: 10;
-            display: flex; flex-direction: column; gap: 10px;
-        }
-
-        /* 🏆 左下角作者標籤 (修改為可點擊連結) */
-        #author-tag {
-            position: fixed; bottom: 20px; left: 20px; z-index: 10;
-            color: rgba(255, 255, 255, 0.6);
-            background: rgba(0, 0, 0, 0.3);
-            padding: 8px 15px; border-radius: 20px;
-            font-size: 14px; backdrop-filter: blur(5px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            /* 4. 修改 CSS: 移除 pointer-events: none; 使其可點擊，新增 text-decoration: none; 移除底線 */
-            text-decoration: none; 
-            transition: 0.2s;
-        }
-        #author-tag:hover {
-            background: rgba(0, 0, 0, 0.5);
-            color: rgba(255, 255, 255, 0.8);
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js 360 終極工具 - 張阿旗 Study Knowledge</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #1a1a1a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        /* 拖放提示遮罩 */
+        #drop-zone {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none; align-items: center; justify-content: center;
+            color: #00ff96; font-size: 28px; border: 5px dashed #00ff96;
+            z-index: 100; pointer-events: none; font-weight: bold;
         }
-        #author-tag b { color: #00ff96; }
 
-        button {
-            padding: 12px 20px;
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(15px);
-            color: #fff; border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 10px; cursor: pointer;
-            font-size: 14px; transition: 0.2s;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            text-align: left;
-        }
-        button:hover { background: rgba(255, 255, 255, 0.3); transform: translateX(-5px); }
-        .file-label {
-            padding: 5px 10px; color: #888; font-size: 11px; text-align: right;
-        }
-        #file { display: none; }
-        .btn-special { background: rgba(0, 255, 150, 0.15); border-color: rgba(0, 255, 150, 0.4); }
-    </style>
+        #ui {
+            position: fixed; top: 20px; right: 20px; z-index: 10;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+
+        /* 🏆 左下角作者標籤 (文字修改為：作者連結) */
+        #author-tag {
+            position: fixed; bottom: 20px; left: 20px; z-index: 10;
+            color: rgba(255, 255, 255, 0.7);
+            background: rgba(0, 0, 0, 0.4);
+            padding: 10px 18px; border-radius: 25px;
+            font-size: 14px; backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 255, 150, 0.3);
+            pointer-events: auto; /* 若之後想加超連結可改為 auto */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        #author-tag b { color: #00ff96; margin-left: 5px; }
+
+        button {
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            color: #fff; border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px; cursor: pointer;
+            font-size: 14px; transition: 0.2s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            text-align: left;
+        }
+        button:hover { background: rgba(255, 255, 255, 0.3); transform: translateX(-5px); }
+        .file-label {
+            padding: 5px 10px; color: #888; font-size: 11px; text-align: right;
+        }
+        #file { display: none; }
+        .btn-special { background: rgba(0, 255, 150, 0.15); border-color: rgba(0, 255, 150, 0.4); }
+    </style>
 </head>
 <body>
 
 <div id="drop-zone">📥 鬆開滑鼠載入全景圖</div>
 
-<a id="author-tag" href="https://www.youtube.com/@AQiAILab" target="_blank">製作：<b>張阿旗 AI Lab - YouTube</b></a>
+<div id="author-tag">作者連結：<b>張阿旗 Study Knowledge</b></div>
 
 <div id="ui">
-    <button onclick="snap()">📷 一般截圖</button>
-    <button class="btn-special" onclick="snapFourGrid()">🖼️ 四宮格截圖 (2*2)</button>
-    <button onclick="resetView()">🏠 重置視角</button>
-    <label class="file-label">支援直接拖放圖片檔案</label>
-    <button onclick="document.getElementById('file').click()">📤 選擇全景圖</button>
-    <input type="file" id="file" accept="image/*">
+    <button onclick="snap()">📷 一般截圖</button>
+    <button class="btn-special" onclick="snapFourGrid()">🖼️ 四宮格截圖 (2*2)</button>
+    <button onclick="resetView()">🏠 重置視角</button>
+    <label class="file-label">支援直接拖放圖片檔案</label>
+    <button onclick="document.getElementById('file').click()">📤 選擇全景圖</button>
+    <input type="file" id="file" accept="image/*">
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 
 <script>
-    let scene = new THREE.Scene();
-    let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    
-    let renderer = new THREE.WebGLRenderer({ 
-        antialias: true, 
-        preserveDrawingBuffer: true, // 保持緩衝區以便截圖
-        alpha: true 
-    });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    document.body.appendChild(renderer.domElement);
+    let scene = new THREE.Scene();
+    let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    
+    let renderer = new THREE.WebGLRenderer({ 
+        antialias: true, 
+        preserveDrawingBuffer: true,
+        alpha: true 
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    document.body.appendChild(renderer.domElement);
 
-    camera.position.set(0, 0, 0.1);
+    camera.position.set(0, 0, 0.1);
 
-    let mesh;
-    function loadTexture(url) {
-        const loader = new THREE.TextureLoader();
-        loader.setCrossOrigin('anonymous'); 
-        loader.load(url, (texture) => {
-            if (mesh) scene.remove(mesh);
-            const geometry = new THREE.SphereGeometry(500, 60, 40);
-            geometry.scale(-1, 1, 1); 
-            const material = new THREE.MeshBasicMaterial({ map: texture });
-            mesh = new THREE.Mesh(geometry, material);
-            scene.add(mesh);
-        }, undefined, (err) => alert("載入失敗"));
-    }
+    let mesh;
+    function loadTexture(url) {
+        const loader = new THREE.TextureLoader();
+        loader.setCrossOrigin('anonymous'); 
+        loader.load(url, (texture) => {
+            if (mesh) scene.remove(mesh);
+            const geometry = new THREE.SphereGeometry(500, 60, 40);
+            geometry.scale(-1, 1, 1); 
+            const material = new THREE.MeshBasicMaterial({ map: texture });
+            mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
+        }, undefined, (err) => alert("載入失敗"));
+    }
 
-    loadTexture("https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg");
+    // 初始預覽圖
+    loadTexture("https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg");
 
-    // --- 檔案處理 ---
-    const dropZone = document.getElementById('drop-zone');
-    function handleFile(file) {
-        if (file && file.type.startsWith('image/')) {
-            const blobURL = URL.createObjectURL(file);
-            loadTexture(blobURL);
-        }
-    }
-    document.getElementById("file").onchange = e => handleFile(e.target.files[0]);
-    window.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.display = 'flex'; });
-    window.addEventListener('dragleave', e => { if (e.relatedTarget === null) dropZone.style.display = 'none'; });
-    window.addEventListener('drop', e => { e.preventDefault(); dropZone.style.display = 'none'; handleFile(e.dataTransfer.files[0]); });
+    // --- 檔案處理 ---
+    const dropZone = document.getElementById('drop-zone');
+    function handleFile(file) {
+        if (file && file.type.startsWith('image/')) {
+            const blobURL = URL.createObjectURL(file);
+            loadTexture(blobURL);
+        }
+    }
+    document.getElementById("file").onchange = e => handleFile(e.target.files[0]);
+    window.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.display = 'flex'; });
+    window.addEventListener('dragleave', e => { if (e.relatedTarget === null) dropZone.style.display = 'none'; });
+    window.addEventListener('drop', e => { e.preventDefault(); dropZone.style.display = 'none'; handleFile(e.dataTransfer.files[0]); });
 
-    // --- 相機控制 ---
-    let isDown = false, lon = 0, lat = 0;
-    document.addEventListener("mousedown", () => isDown = true);
-    document.addEventListener("mouseup", () => isDown = false);
-    document.addEventListener("mousemove", (e) => {
-        if (!isDown) return;
-        lon += e.movementX * 0.15;
-        lat -= e.movementY * 0.15;
-    });
-    document.addEventListener("wheel", (e) => {
-        camera.fov += e.deltaY * 0.05;
-        camera.fov = Math.max(10, Math.min(100, camera.fov));
-        camera.updateProjectionMatrix();
-    }, { passive: false });
+    // --- 相機控制 ---
+    let isDown = false, lon = 0, lat = 0;
+    document.addEventListener("mousedown", () => isDown = true);
+    document.addEventListener("mouseup", () => isDown = false);
+    document.addEventListener("mousemove", (e) => {
+        if (!isDown) return;
+        lon += e.movementX * 0.15;
+        lat -= e.movementY * 0.15;
+    });
+    document.addEventListener("wheel", (e) => {
+        camera.fov += e.deltaY * 0.05;
+        camera.fov = Math.max(10, Math.min(100, camera.fov));
+        camera.updateProjectionMatrix();
+    }, { passive: false });
 
-    function resetView() { lon = 0; lat = 0; camera.fov = 75; camera.updateProjectionMatrix(); }
+    function resetView() { lon = 0; lat = 0; camera.fov = 75; camera.updateProjectionMatrix(); }
 
-    function updateCamera() {
-        lat = Math.max(-85, Math.min(85, lat));
-        const phi = THREE.MathUtils.degToRad(90 - lat);
-        const theta = THREE.MathUtils.degToRad(lon);
-        camera.lookAt(
-            500 * Math.sin(phi) * Math.cos(theta),
-            500 * Math.cos(phi),
-            500 * Math.sin(phi) * Math.sin(theta)
-        );
-    }
+    function updateCamera() {
+        lat = Math.max(-85, Math.min(85, lat));
+        const phi = THREE.MathUtils.degToRad(90 - lat);
+        const theta = THREE.MathUtils.degToRad(lon);
+        camera.lookAt(
+            500 * Math.sin(phi) * Math.cos(theta),
+            500 * Math.cos(phi),
+            500 * Math.sin(phi) * Math.sin(theta)
+        );
+    }
 
-    function animate() {
-        requestAnimationFrame(animate);
-        updateCamera();
-        renderer.render(scene, camera);
-    }
-    animate();
+    function animate() {
+        requestAnimationFrame(animate);
+        updateCamera();
+        renderer.render(scene, camera);
+    }
+    animate();
 
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
 
-    // --- 純淨的四宮格截圖 (無浮水印) ---
-    function snapFourGrid() {
-        const sSize = 1024; // 單張圖大小
-        const finalCanvas = document.createElement("canvas");
-        finalCanvas.width = sSize * 2;
-        finalCanvas.height = sSize * 2;
-        const ctx = finalCanvas.getContext("2d");
+    // --- 2*2 四宮格截圖 (截圖不含浮水印) ---
+    function snapFourGrid() {
+        const sSize = 1024;
+        const finalCanvas = document.createElement("canvas");
+        finalCanvas.width = sSize * 2;
+        finalCanvas.height = sSize * 2;
+        const ctx = finalCanvas.getContext("2d");
 
-        const oldLon = lon, oldLat = lat;
-        
-        // 🏆 隱藏介面標籤，確保截圖純淨
-        const authorTag = document.getElementById('author-tag');
-        const uiPanel = document.getElementById('ui');
-        if (authorTag) authorTag.style.display = 'none';
-        if (uiPanel) uiPanel.style.display = 'none';
+        const oldLon = lon, oldLat = lat;
 
-        renderer.setSize(sSize, sSize);
-        camera.aspect = 1;
-        camera.updateProjectionMatrix();
+        renderer.setSize(sSize, sSize);
+        camera.aspect = 1;
+        camera.updateProjectionMatrix();
 
-        const angles = [
-            { l: oldLon,       t: "Front", x: 0, y: 0 },
-            { l: oldLon + 180, t: "Back",  x: 1, y: 0 },
-            { l: oldLon + 270, t: "Left",  x: 0, y: 1 },
-            { l: oldLon + 90,  t: "Right", x: 1, y: 1 }
-        ];
+        const angles = [
+            { l: oldLon,       t: "Front", x: 0, y: 0 },
+            { l: oldLon + 180, t: "Back",  x: 1, y: 0 },
+            { l: oldLon + 270, t: "Left",  x: 0, y: 1 },
+            { l: oldLon + 90,  t: "Right", x: 1, y: 1 }
+        ];
 
-        angles.forEach(pos => {
-            lon = pos.l; lat = 0; // 強制水平視角
-            updateCamera();
-            renderer.render(scene, camera);
-            // 從 WebGL 抓圖到 Canvas
-            ctx.drawImage(renderer.domElement, pos.x * sSize, pos.y * sSize, sSize, sSize);
-            
-            // 視角標籤 (選用，若需要完全純淨可把這幾行註解掉)
-            ctx.fillStyle = "rgba(255,255,255,0.8)";
-            ctx.font = "bold 40px Arial";
-            ctx.fillText(pos.t, pos.x * sSize + 30, pos.y * sSize + 70);
-        });
+        angles.forEach(pos => {
+            lon = pos.l; lat = 0;
+            updateCamera();
+            renderer.render(scene, camera);
+            ctx.drawImage(renderer.domElement, pos.x * sSize, pos.y * sSize, sSize, sSize);
+            
+            // 視角文字標註 (Front/Back...)
+            ctx.fillStyle = "rgba(255,255,255,0.8)";
+            ctx.font = "bold 40px Arial";
+            ctx.fillText(pos.t, pos.x * sSize + 30, pos.y * sSize + 70);
+        });
 
-        // 下載純淨圖片
-        const link = document.createElement("a");
-        link.href = finalCanvas.toDataURL("image/png");
-        link.download = `360-Grid-${Date.now()}.png`;
-        link.click();
+        const link = document.createElement("a");
+        link.href = finalCanvas.toDataURL("image/png");
+        link.download = `360-Grid-${Date.now()}.png`;
+        link.click();
 
-        // 還原視角與介面
-        lon = oldLon; lat = oldLat;
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        
-        // 🏆 恢復介面顯示
-        if (authorTag) authorTag.style.display = 'block';
-        if (uiPanel) uiPanel.style.display = 'flex';
-    }
+        lon = oldLon; lat = oldLat;
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+    }
 
-    // 純淨的一般截圖
-    function snap() {
-        renderer.render(scene, camera);
-        const link = document.createElement("a");
-        link.href = renderer.domElement.toDataURL("image/png");
-        link.download = `360-Shot-${Date.now()}.png`;
-        link.click();
-    }
+    function snap() {
+        renderer.render(scene, camera);
+        const link = document.createElement("a");
+        link.href = renderer.domElement.toDataURL("image/png");
+        link.download = `360-Shot-${Date.now()}.png`;
+        link.click();
+    }
 </script>
 
 </body>
