@@ -19,20 +19,28 @@
         #ui {
             position: fixed; top: 20px; right: 20px; z-index: 10;
             display: flex; flex-direction: column; gap: 10px;
+            width: 220px;
         }
 
-        /* 🏆 左下角作者標籤 (文字修改為：作者連結) */
-        #author-tag {
-            position: fixed; bottom: 20px; left: 20px; z-index: 10;
-            color: rgba(255, 255, 255, 0.7);
-            background: rgba(0, 0, 0, 0.4);
-            padding: 10px 18px; border-radius: 25px;
-            font-size: 14px; backdrop-filter: blur(8px);
-            border: 1px solid rgba(0, 255, 150, 0.3);
-            pointer-events: auto; /* 若之後想加超連結可改為 auto */
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        /* 🏆 放在選單內的作者連結按鈕樣式 */
+        .author-btn {
+            padding: 12px 20px;
+            background: rgba(255, 0, 0, 0.2) !important; /* YouTube 紅色調 */
+            backdrop-filter: blur(15px);
+            color: #fff; border: 1px solid rgba(255, 100, 100, 0.5) !important;
+            border-radius: 10px; cursor: pointer;
+            font-size: 14px; transition: 0.3s;
+            text-decoration: none;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(255, 0, 0, 0.2);
         }
-        #author-tag b { color: #00ff96; margin-left: 5px; }
+        .author-btn:hover {
+            background: rgba(255, 0, 0, 0.4) !important;
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(255, 0, 0, 0.4);
+        }
+        .author-btn b { color: #fff; margin-left: 5px; text-decoration: underline; }
 
         button {
             padding: 12px 20px;
@@ -42,11 +50,13 @@
             border-radius: 10px; cursor: pointer;
             font-size: 14px; transition: 0.2s;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            text-align: left;
+            text-align: center;
         }
-        button:hover { background: rgba(255, 255, 255, 0.3); transform: translateX(-5px); }
+        button:hover { background: rgba(255, 255, 255, 0.3); transform: translateY(-2px); }
+        
         .file-label {
-            padding: 5px 10px; color: #888; font-size: 11px; text-align: right;
+            padding: 5px 10px; color: #888; font-size: 11px; text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1); margin-top: 5px;
         }
         #file { display: none; }
         .btn-special { background: rgba(0, 255, 150, 0.15); border-color: rgba(0, 255, 150, 0.4); }
@@ -56,14 +66,17 @@
 
 <div id="drop-zone">📥 鬆開滑鼠載入全景圖</div>
 
-<div id="author-tag">作者連結：<b>張阿旗 Study Knowledge</b></div>
-
 <div id="ui">
+    <a class="author-btn" href="https://www.youtube.com/@張阿旗StudyKnowledge" target="_blank">
+        📺 <span>張阿旗 Study Knowledge</span>
+    </a>
+
     <button onclick="snap()">📷 一般截圖</button>
     <button class="btn-special" onclick="snapFourGrid()">🖼️ 四宮格截圖 (2*2)</button>
     <button onclick="resetView()">🏠 重置視角</button>
+    
     <label class="file-label">支援直接拖放圖片檔案</label>
-    <button onclick="document.getElementById('file').click()">📤 選擇全景圖</button>
+    <button onclick="document.getElementById('file').click()">📤 選擇全景圖檔案</button>
     <input type="file" id="file" accept="image/*">
 </div>
 
@@ -98,7 +111,6 @@
         }, undefined, (err) => alert("載入失敗"));
     }
 
-    // 初始預覽圖
     loadTexture("https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg");
 
     // --- 檔案處理 ---
@@ -155,7 +167,7 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    // --- 2*2 四宮格截圖 (截圖不含浮水印) ---
+    // --- 四宮格截圖 ---
     function snapFourGrid() {
         const sSize = 1024;
         const finalCanvas = document.createElement("canvas");
@@ -164,6 +176,9 @@
         const ctx = finalCanvas.getContext("2d");
 
         const oldLon = lon, oldLat = lat;
+
+        // 截圖前隱藏 UI
+        document.getElementById('ui').style.display = 'none';
 
         renderer.setSize(sSize, sSize);
         camera.aspect = 1;
@@ -181,8 +196,6 @@
             updateCamera();
             renderer.render(scene, camera);
             ctx.drawImage(renderer.domElement, pos.x * sSize, pos.y * sSize, sSize, sSize);
-            
-            // 視角文字標註 (Front/Back...)
             ctx.fillStyle = "rgba(255,255,255,0.8)";
             ctx.font = "bold 40px Arial";
             ctx.fillText(pos.t, pos.x * sSize + 30, pos.y * sSize + 70);
@@ -197,6 +210,8 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
+
+        document.getElementById('ui').style.display = 'flex';
     }
 
     function snap() {
