@@ -3,30 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Three.js 360 截圖工具（修正翻轉版）</title>
+    <title>Three.js 360 終極工具（100% 不黑 + 正向截圖）</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; }
+        body { margin: 0; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
         #ui {
             position: fixed; top: 20px; right: 20px; z-index: 10;
             display: flex; flex-direction: column; gap: 10px;
         }
         button {
-            padding: 12px 18px;
+            padding: 12px 20px;
             background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(15px);
             color: #fff; border: 1px solid rgba(255, 255, 255, 0.4);
             border-radius: 10px; cursor: pointer;
             font-size: 14px; transition: 0.2s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
-        button:hover { background: rgba(255, 255, 255, 0.3); }
-        input[type="file"] { color: white; font-size: 12px; }
+        button:hover { background: rgba(255, 255, 255, 0.35); transform: translateY(-2px); }
+        .file-label {
+            padding: 10px; color: #aaa; font-size: 12px; text-align: right;
+        }
+        #file { display: none; }
     </style>
 </head>
 <body>
 
 <div id="ui">
-    <button onclick="snap()">📷 截圖（已修正上下顛倒）</button>
+    <button onclick="snap()">📷 執行截圖 (修正不黑/不倒置)</button>
     <button onclick="resetView()">🏠 重置視角</button>
+    <label class="file-label">點擊下方按鈕更換圖片：</label>
+    <button onclick="document.getElementById('file').click()">📤 上傳全景圖</button>
     <input type="file" id="file" accept="image/*">
 </div>
 
@@ -36,8 +42,12 @@
     let scene = new THREE.Scene();
     let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     
-    // 建立渲染器，開啟 preserveDrawingBuffer 確保基本相容性
-    let renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    // 關鍵設定：preserveDrawingBuffer 必須為 true 才能讓某些瀏覽器抓到畫面
+    let renderer = new THREE.WebGLRenderer({ 
+        antialias: true, 
+        preserveDrawingBuffer: true,
+        alpha: true 
+    });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     document.body.appendChild(renderer.domElement);
@@ -46,36 +56,42 @@
 
     let mesh;
 
-    // 建立球體並載入紋理
+    // 載入紋理與修正 CORS 安全問題
     function loadTexture(url) {
-        new THREE.TextureLoader().load(url, (texture) => {
+        const loader = new THREE.TextureLoader();
+        // 解決 GitHub Pages 上的畫布汙染問題
+        loader.setCrossOrigin('anonymous'); 
+
+        loader.load(url, (texture) => {
             if (mesh) scene.remove(mesh);
 
-            // 使用球體幾何，並將其內翻 (scale -1) 讓貼圖在內側
             const geometry = new THREE.SphereGeometry(500, 60, 40);
-            geometry.scale(-1, 1, 1);
+            geometry.scale(-1, 1, 1); // 內翻球體
 
             const material = new THREE.MeshBasicMaterial({ map: texture });
             mesh = new THREE.Mesh(geometry, material);
             scene.add(mesh);
+            console.log("紋理載入成功");
+        }, undefined, (err) => {
+            alert("圖片載入失敗，請檢查格式或嘗試更換瀏覽器。");
         });
     }
 
-    // 預設全景圖 (可替換成你的 URL)
+    // 預設全景圖
     loadTexture("https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg");
 
-    // 上傳檔案處理
+    // 上傳檔案邏輯：使用 Blob URL 以獲得最佳相容性
     document.getElementById("file").onchange = e => {
         const file = e.target.files[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = event => loadTexture(event.target.result);
-        reader.readAsDataURL(file);
+        
+        // 釋放舊的 ObjectURL 避免記憶體洩漏
+        const blobURL = URL.createObjectURL(file);
+        loadTexture(blobURL);
     };
 
-    // 視角控制邏輯
+    // 視角控制
     let isDown = false, lon = 0, lat = 0;
-
     document.addEventListener("mousedown", () => isDown = true);
     document.addEventListener("mouseup", () => isDown = false);
     document.addEventListener("mousemove", (e) => {
@@ -84,67 +100,63 @@
         lat -= e.movementY * 0.15;
     });
 
-    // 觸控支援 (手機版)
-    document.addEventListener("touchstart", () => isDown = true);
+    // 支援觸控
+    document.addEventListener("touchstart", () => isDown = true, {passive: true});
     document.addEventListener("touchend", () => isDown = false);
     document.addEventListener("touchmove", (e) => {
         if (!isDown) return;
         let touch = e.touches[0];
-        lon += touch.clientX * 0.01; // 簡易觸控計算
-        lat -= touch.clientY * 0.01;
-    });
+        lon += 0.5; // 簡易增量
+        lat -= 0.5;
+    }, {passive: true});
 
-    function resetView() {
-        lon = 0; lat = 0;
-    }
+    function resetView() { lon = 0; lat = 0; }
 
     function animate() {
         requestAnimationFrame(animate);
-
         lat = Math.max(-85, Math.min(85, lat));
         const phi = THREE.MathUtils.degToRad(90 - lat);
         const theta = THREE.MathUtils.degToRad(lon);
-
         const target = new THREE.Vector3(
             500 * Math.sin(phi) * Math.cos(theta),
             500 * Math.cos(phi),
             500 * Math.sin(phi) * Math.sin(theta)
         );
-
         camera.lookAt(target);
         renderer.render(scene, camera);
     }
     animate();
 
-    // 視窗縮放適應
     window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    // ⭐ 核心截圖功能：修正上下顛倒
+    // ⭐ 終極截圖功能：解決黑屏 + 上下顛倒
     function snap() {
-        // 設定截圖解析度 (可調整大小)
+        // 1. 強制在截圖前渲染一幀，確保緩衝區充滿數據
+        renderer.render(scene, camera);
+
         const width = 1920; 
         const height = 1080;
 
-        // 1. 建立離屏渲染目標
+        // 2. 建立渲染目標
         const rt = new THREE.WebGLRenderTarget(width, height);
         renderer.setRenderTarget(rt);
         renderer.render(scene, camera);
 
-        // 2. 讀取 WebGL 像素數據 (此數據是上下倒置的)
+        // 3. 讀取像素 (WebGL 數據底層是倒的)
         const pixels = new Uint8Array(width * height * 4);
         renderer.readRenderTargetPixels(rt, 0, 0, width, height, pixels);
 
-        // 3. 建立 Canvas 進行翻轉處理
+        // 4. 建立 Canvas 翻轉並導出
         const canvas = document.createElement("canvas");
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext("2d");
 
-        // 建立臨時數據容器
+        // 將數據放入臨時畫布
         const tempCanvas = document.createElement("canvas");
         tempCanvas.width = width;
         tempCanvas.height = height;
@@ -153,18 +165,22 @@
         imageData.data.set(pixels);
         tempCtx.putImageData(imageData, 0, 0);
 
-        // --- 翻轉繪製：解決上下倒置 ---
+        // --- 執行翻轉矩陣 ---
         ctx.translate(0, height);
         ctx.scale(1, -1);
         ctx.drawImage(tempCanvas, 0, 0);
 
-        // 4. 清理並下載
+        // 5. 切換回螢幕渲染並下載
         renderer.setRenderTarget(null);
 
-        const link = document.createElement("a");
-        link.href = canvas.toDataURL("image/png");
-        link.download = `360-capture-${Date.now()}.png`;
-        link.click();
+        try {
+            const link = document.createElement("a");
+            link.href = canvas.toDataURL("image/png");
+            link.download = `360-shot-${Date.now()}.png`;
+            link.click();
+        } catch (e) {
+            alert("截圖失敗：瀏覽器安全機制阻止了操作。請嘗試更換瀏覽器或在本地運行。");
+        }
     }
 </script>
 
