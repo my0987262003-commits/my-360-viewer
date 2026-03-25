@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Three.js 360 終極工具 - 張阿旗 Study Knowledge</title>
+    <title>Three.js 360 終極工具 - 張阿旗 AI Lab</title>
     <style>
         body { margin: 0; overflow: hidden; background: #1a1a1a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         
@@ -19,28 +19,30 @@
         #ui {
             position: fixed; top: 20px; right: 20px; z-index: 10;
             display: flex; flex-direction: column; gap: 10px;
-            width: 220px;
+            width: 240px; /* 稍微加寬以容納新文字 */
         }
 
-        /* 🏆 放在選單內的作者連結按鈕樣式 */
+        /* 🏆 作者連結按鈕：更新文字與樣式 */
         .author-btn {
-            padding: 12px 20px;
-            background: rgba(255, 0, 0, 0.2) !important; /* YouTube 紅色調 */
+            padding: 12px 15px;
+            background: rgba(255, 0, 0, 0.25) !important;
             backdrop-filter: blur(15px);
-            color: #fff; border: 1px solid rgba(255, 100, 100, 0.5) !important;
+            color: #fff; border: 1px solid rgba(255, 100, 100, 0.6) !important;
             border-radius: 10px; cursor: pointer;
             font-size: 14px; transition: 0.3s;
             text-decoration: none;
             display: flex; align-items: center; justify-content: center;
             font-weight: bold;
-            box-shadow: 0 4px 15px rgba(255, 0, 0, 0.2);
+            box-shadow: 0 4px 15px rgba(255, 0, 0, 0.3);
+            white-space: nowrap;
         }
         .author-btn:hover {
-            background: rgba(255, 0, 0, 0.4) !important;
-            transform: scale(1.05);
-            box-shadow: 0 6px 20px rgba(255, 0, 0, 0.4);
+            background: rgba(255, 0, 0, 0.45) !important;
+            transform: scale(1.03);
+            box-shadow: 0 6px 20px rgba(255, 0, 0, 0.5);
+            text-decoration: underline;
         }
-        .author-btn b { color: #fff; margin-left: 5px; text-decoration: underline; }
+        .author-btn b { color: #00ff96; margin-left: 4px; }
 
         button {
             padding: 12px 20px;
@@ -68,7 +70,7 @@
 
 <div id="ui">
     <a class="author-btn" href="https://www.youtube.com/@張阿旗StudyKnowledge" target="_blank">
-        📺 <span>張阿旗 Study Knowledge</span>
+        📺 作者連結：<b>張阿旗 AI Lab</b>
     </a>
 
     <button onclick="snap()">📷 一般截圖</button>
@@ -113,7 +115,6 @@
 
     loadTexture("https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg");
 
-    // --- 檔案處理 ---
     const dropZone = document.getElementById('drop-zone');
     function handleFile(file) {
         if (file && file.type.startsWith('image/')) {
@@ -126,7 +127,6 @@
     window.addEventListener('dragleave', e => { if (e.relatedTarget === null) dropZone.style.display = 'none'; });
     window.addEventListener('drop', e => { e.preventDefault(); dropZone.style.display = 'none'; handleFile(e.dataTransfer.files[0]); });
 
-    // --- 相機控制 ---
     let isDown = false, lon = 0, lat = 0;
     document.addEventListener("mousedown", () => isDown = true);
     document.addEventListener("mouseup", () => isDown = false);
@@ -167,7 +167,6 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    // --- 四宮格截圖 ---
     function snapFourGrid() {
         const sSize = 1024;
         const finalCanvas = document.createElement("canvas");
@@ -176,8 +175,6 @@
         const ctx = finalCanvas.getContext("2d");
 
         const oldLon = lon, oldLat = lat;
-
-        // 截圖前隱藏 UI
         document.getElementById('ui').style.display = 'none';
 
         renderer.setSize(sSize, sSize);
